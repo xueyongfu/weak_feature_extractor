@@ -8,8 +8,8 @@ from operator import itemgetter
 
 class weak_mxh64_1024(nn.Module):
 
-    def __init__(self,nclass,glplfn):
-        super(weak_mxh64_1024,self).__init__() 
+    def __init__(self,nclass, glplfn):
+        super(weak_mxh64_1024, self).__init__()
         self.globalpool = glplfn
         self.layer1 = nn.Sequential(nn.Conv2d(1,16,kernel_size=3,padding=1),nn.BatchNorm2d(16),nn.ReLU())
         self.layer2 = nn.Sequential(nn.Conv2d(16,16,kernel_size=3,padding=1),nn.BatchNorm2d(16),nn.ReLU())

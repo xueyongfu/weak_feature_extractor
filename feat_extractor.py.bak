@@ -24,33 +24,16 @@ netwrkgpl = Fx.avg_pool2d # keep it fixed
 
 
 def load_model(netx,modpath):
-    '''
-    Example:
-    >> > torch.load('tensors.pt')
-    # Load all tensors onto the CPU
-    >> > torch.load('tensors.pt', map_location=torch.device('cpu'))
-    # Load all tensors onto the CPU, using a function
-    >> > torch.load('tensors.pt', map_location=lambda storage, loc: storage)
-    # Load all tensors onto GPU 1
-    >> > torch.load('tensors.pt', map_location=lambda storage, loc: storage.cuda(1))
-    # Map tensors from GPU 1 to GPU 0
-    >> > torch.load('tensors.pt', map_location={'cuda:1': 'cuda:0'})
-    # Load tensor from io.BytesIO object
-    >> > with open('tensor.pt', 'rb') as f:
-        buffer = io.BytesIO(f.read())
-    >> > torch.load(buffer)
-    '''
-    state_dict = torch.load(modpath, map_location=lambda storage, loc: storage)  #load through cpu -- safest
+    #load through cpu -- safest
+    state_dict = torch.load(modpath,map_location=lambda storage, loc: storage)
     new_state_dict = OrderedDict()
-    for k, v in list(state_dict.items()):
+    for k, v in state_dict.items():
         if 'module.' in k:
-            name = k[7:]   #将预训练模型的参数key更名
+            name = k[7:]
         else:
             name = k
         new_state_dict[name] = v
-    missing_keys, unexcepted_keys =  netx.load_state_dict(new_state_dict)
-    print(missing_keys)
-    print(unexcepted_keys)
+    netx.load_state_dict(new_state_dict)
 
 def getFeat(extractor,inpt):
     # return pytorch tensor 
@@ -60,7 +43,7 @@ def getFeat(extractor,inpt):
         indata = indata.cuda()
 
     pred = extractor(indata)
-    print(pred.size())
+    print pred.size()
     if len(pred.size()) > 2:
         gpred = globalpoolfn(pred,kernel_size=pred.size()[2:])
         gpred = gpred.view(gpred.size(0),-1)
@@ -70,17 +53,16 @@ def getFeat(extractor,inpt):
 #keep sample rate 44100, no need 
 def main(filename,srate=44100):
     try:
-        y, sr = lib.load(filename,sr=None)  #To preserve the native sampling rate of the file, use `sr=None`
-        print(y.shape)
+        y, sr = lib.load(filename,sr=None)
     except:
         raise IOError('Give me an audio  file which I can read!!')
     
     if len(y.shape) > 1:
-        print(('Mono Conversion'), end=' ')
-        y = lib.to_mono(y)   #多通道转单通道
+        print ('Mono Conversion'),
+        y = lib.to_mono(y)
 
     if sr != srate:
-        print('Resampling to {}'.format(srate), end=' ')
+        print 'Resampling to {}'.format(srate),
         y = lib.resample(y,sr,srate)
 
         
@@ -89,29 +71,28 @@ def main(filename,srate=44100):
     
     #quick hack for now
     if inpt.shape[0] < 128:
-        inpt = np.concatenate((inpt, np.zeros((128-inpt.shape[0], n_mels))),axis=0)
+        inpt = np.concatenate((inpt,np.zeros((128-inpt.shape[0],n_mels))),axis=0)
     
 
     # input needs to be 4D, batch_size X 1 X inpt_size[0] X inpt_size[1]
     inpt = np.reshape(inpt,(1,1,inpt.shape[0],inpt.shape[1]))
-    print(inpt.shape)
+    print inpt.shape
 
-
-    netType = getattr(netark, trainType)   #netark是个py文件,其中有个类是trainType. getattr可以获取这个类
-    netx = netType(527, netwrkgpl)
-    load_model(netx, pre_model_path)
+    netType = getattr(netark,trainType)
+    netx = netType(527,netwrkgpl)
+    load_model(netx,pre_model_path)
 
     
     if usegpu:
         netx.cuda()
     
-    feat_extractor = exm.featExtractor(netx, featType)
+    feat_extractor = exm.featExtractor(netx,featType)
     
     pred = getFeat(feat_extractor,inpt)
 
     #numpy arrays
     feature = pred.data.cpu().numpy()
-    print(feature.shape)
+    print feature.shape
 
     # prediction for each segment in each column
     return feature
